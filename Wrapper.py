@@ -96,10 +96,10 @@ def DoG_bank(scales,orientations,size):
 			filter_bank.append(DoG_rot)
 			plt.subplot(scales.shape[0],orientations.shape[0],k)
 			plt.axis('off')
-			plt.imshow(filter_bank[k-1],cmap='gray')
+			#plt.imshow(filter_bank[k-1],cmap='gray')
 			k = k+1
 	plt.subplots_adjust(wspace=0.15, hspace=-0.8)
-	plt.show()
+	#plt.show()
 	return filter_bank
 
 def LM_bank(size,base_scale):
@@ -133,13 +133,13 @@ def LM_bank(size,base_scale):
 		filter_bank.append(LM_base)
 		plt.subplot(4,12,k)
 		plt.axis('off')
-		plt.imshow(filter_bank[k-1],cmap='gray')
+		#plt.imshow(filter_bank[k-1],cmap='gray')
 		k = k+1
 		s = s * (2 ** 0.5)
 		if j%4 == 0:
 			s = base_scale
 	plt.subplots_adjust(wspace=0.15, hspace=-0.8)
-	plt.show()
+	#plt.show()
 	return filter_bank
 
 def Texton(img, DoG_filter_bank, LM_filter_bank, Gabor_filter_bank):
@@ -181,10 +181,10 @@ def half_disks_gen(rad,orientations):
 	for k in range(1,len(half_disk_masks)+1):
 		plt.subplot(2*rad.shape[0],orientations.shape[0],k)
 		plt.axis('off')
-		plt.imshow(half_disk_masks[k-1])
+		#plt.imshow(half_disk_masks[k-1])
 
 	plt.subplots_adjust(wspace=0.15, hspace=0.5)
-	plt.show()
+	#plt.show()
 	return half_disk_masks
 
 def bin_map(map,bin_value):
@@ -214,19 +214,21 @@ def main():
 	img_list_canny = []
 	img_list_sobel = []
 	img_list_gt = []
-	index=0
 
 	for filename in glob.glob('BSDS500/Images/*.jpg'):
-		img = cv2.imread(filename)
-		img_list.append(img)
+		#img = cv2.imread(filename)
+		img_list.append(filename)
+	img_list.sort()
 
-	for filename in glob.glob('BSDS500/GroundTruth/*.png'):
-		img = cv2.imread(filename)
-		img_list_gt.append(img)
+	for filename in glob.glob('BSDS500/SobelBaseline/*.png'):
+		img_list_sobel.append(filename)
+	img_list_sobel.sort()
 
-	img_gray = cv2.cvtColor(img_list[index], cv2.COLOR_BGR2GRAY)
-	plt.imshow(img_gray)
-	plt.show()
+	for filename in glob.glob('BSDS500/CannyBaseline/*.png'):
+		img_list_canny.append(filename)
+	img_list_canny.sort()
+
+	fs = 25
 
 	"""
 	Generate Difference of Gaussian Filter Bank: (DoG)
@@ -235,21 +237,21 @@ def main():
 	"""
 	scales = np.linspace(1, 7, num=4)
 	orientations = np.linspace(360/16, 360, num=16)
-	DoG_filter_bank = DoG_bank(scales,orientations,25)
+	DoG_filter_bank = DoG_bank(scales,orientations,fs)
 
 	"""
 	Generate Leung-Malik Filter Bank: (LM)
 	Display all the filters in this filter bank and save image as LM.png,
 	use command "cv2.imwrite(...)"
 	"""
-	LM_filter_bank = LM_bank(25,1)
+	LM_filter_bank = LM_bank(fs,1)
 
 	"""
 	Generate Gabor Filter Bank: (Gabor)
 	Display all the filters in this filter bank and save image as Gabor.png,
 	use command "cv2.imwrite(...)"
 	"""
-	Gabor_filter_bank = Gabor_bank(25,2*3.14,0)
+	Gabor_filter_bank = Gabor_bank(fs,2*3.14,0)
 
 	"""
 	Generate Half-disk masks
@@ -260,102 +262,116 @@ def main():
 	orientations = np.linspace(0,180-180/8,num=8)
 	half_disk_masks = half_disks_gen(rad,orientations)
 
-	"""
-	Generate Texton Map
-	Filter image using oriented gaussian filter bank
-	"""
-	Texton_filtered = Texton(img_gray, DoG_filter_bank, LM_filter_bank, Gabor_filter_bank)
-	print(Texton_filtered.shape)
-	"""
-	Generate texture ID's using K-means clustering
-	Display texton map and save image as TextonMap_ImageName.png,
-	use command "cv2.imwrite('...)"
-	"""
-	Texton_map_cluster = KMeans(n_clusters=64, random_state=0).fit(Texton_filtered)
-	labels = Texton_map_cluster.labels_
-	Texton_map = np.reshape(labels, (img_gray.shape))
-	plt.imshow(Texton_map, 'hsv')
-	plt.show()
+	for index in range(0,len(img_list)):
+		img_color = cv2.imread(img_list[index])
+		img_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
+		#plt.imshow(img_gray)
+		#plt.show()
 
-	"""
-	Generate Texton Gradient (Tg)
-	Perform Chi-square calculation on Texton Map
-	Display Tg and save image as Tg_ImageName.png,
-	use command "cv2.imwrite(...)"
-	"""
-	Tg = Gradient(Texton_map, 64, half_disk_masks)
-	plt.imshow(Tg, cmap='hsv')
-	plt.show()
+		"""
+		Generate Texton Map
+		Filter image using oriented gaussian filter bank
+		"""
+		Texton_filtered = Texton(img_gray, DoG_filter_bank, LM_filter_bank, Gabor_filter_bank)
 
-	"""
-	Generate Brightness Map
-	Perform brightness binning 
-	"""
-	Brightness = img_gray.reshape((img_gray.shape[0]*img_gray.shape[1]),1)
-	Brightness_map_cluster = KMeans(n_clusters=16, random_state=0).fit(Brightness)
-	labels = Brightness_map_cluster.labels_
-	Brightness_map = np.reshape(labels, (img_gray.shape))
-	plt.imshow(Brightness_map, 'hsv')
-	plt.show()
+		"""
+		Generate texture ID's using K-means clustering
+		Display texton map and save image as TextonMap_ImageName.png,
+		use command "cv2.imwrite('...)"
+		"""
+		Texton_map_cluster = KMeans(n_clusters=16, random_state=0).fit(Texton_filtered)
+		labels = Texton_map_cluster.labels_
+		Texton_map = np.reshape(labels, (img_gray.shape))
+		plt.imshow(Texton_map, 'hsv')
+		plt.show()
+		cv2.imwrite('BSDS500/Texton_Maps/TextonMap_{}.png'.format(index), Texton_map)
 
-	"""
-	Generate Brightness Gradient (Bg)
-	Perform Chi-square calculation on Brightness Map
-	Display Bg and save image as Bg_ImageName.png,
-	use command "cv2.imwrite(...)"
-	"""
-	Bg = Gradient(Brightness_map, 16, half_disk_masks)
-	plt.imshow(Bg, 'hsv')
-	plt.show()
+		"""
+		Generate Texton Gradient (Tg)
+		Perform Chi-square calculation on Texton Map
+		Display Tg and save image as Tg_ImageName.png,
+		use command "cv2.imwrite(...)"
+		"""
+		Tg = Gradient(Texton_map, 16, half_disk_masks)
+		img_f = np.array(Tg * (1 / Tg.max()) * 255, dtype=np.uint8)
+		Tg_thin = cv2.ximgproc.thinning(img_f)
+		plt.imshow(Tg_thin, cmap='gray')
+		plt.show()
+		cv2.imwrite('BSDS500/Texton_Gradients/Tg_{}.png'.format(index), Tg)
 
-	"""
-	Generate Color Map
-	Perform color binning or clustering
-	"""
-	Color = img_list[index].reshape((img_gray.shape[0]*img_gray.shape[1]),3)
-	Color_map_cluster = KMeans(n_clusters=16, random_state=0).fit(Color)
-	labels = Color_map_cluster.labels_
-	Color_map = np.reshape(labels, (img_gray.shape))
-	plt.imshow(Color_map, 'hsv')
-	plt.show()
+		"""
+		Generate Brightness Map
+		Perform brightness binning 
+		"""
+		Brightness = img_gray.reshape((img_gray.shape[0]*img_gray.shape[1]),1)
+		Brightness_map_cluster = KMeans(n_clusters=16, random_state=0).fit(Brightness)
+		labels = Brightness_map_cluster.labels_
+		Brightness_map = np.reshape(labels, (img_gray.shape))
+		#plt.imshow(Brightness_map, 'hsv')
+		#plt.show()
 
-	"""
-	Generate Color Gradient (Cg)
-	Perform Chi-square calculation on Color Map
-	Display Cg and save image as Cg_ImageName.png,
-	use command "cv2.imwrite(...)"
-	"""
-	Cg = Gradient(Color_map, 16, half_disk_masks)
-	plt.imshow(Cg, 'hsv')
-	plt.show()
+		"""
+		Generate Brightness Gradient (Bg)
+		Perform Chi-square calculation on Brightness Map
+		Display Bg and save image as Bg_ImageName.png,
+		use command "cv2.imwrite(...)"
+		"""
+		Bg = Gradient(Brightness_map, 16, half_disk_masks)
+		img_f = np.array(Bg * (1 / Bg.max()) * 255, dtype=np.uint8)
+		Bg_thin = cv2.ximgproc.thinning(img_f)
+		plt.imshow(Bg_thin, 'gray')
+		plt.show()
+		cv2.imwrite('BSDS500/Brightness_Gradients/Bg_{}.png'.format(index), Bg)
 
-	"""
-	Read Sobel Baseline
-	use command "cv2.imread(...)"
-	"""
-	for filename in glob.glob('BSDS500/SobelBaseline/*.png'):
-		img = cv2.imread(filename)
-		img_list_sobel.append(img)
+		"""
+		Generate Color Map
+		Perform color binning or clustering
+		"""
+		Color = img_color.reshape((img_gray.shape[0]*img_gray.shape[1]),3)
+		Color_map_cluster = KMeans(n_clusters=16, random_state=0).fit(Color)
+		labels = Color_map_cluster.labels_
+		Color_map = np.reshape(labels, (img_gray.shape))
+		#plt.imshow(Color_map, 'hsv')
+		#plt.show()
 
-	"""
-	Read Canny Baseline
-	use command "cv2.imread(...)"
-	"""
-	for filename in glob.glob('BSDS500/CannyBaseline/*.png'):
-		img = cv2.imread(filename)
-		img_list_canny.append(img)
+		"""
+		Generate Color Gradient (Cg)
+		Perform Chi-square calculation on Color Map
+		Display Cg and save image as Cg_ImageName.png,
+		use command "cv2.imwrite(...)"
+		"""
+		Cg = Gradient(Color_map, 16, half_disk_masks)
+		img_f = np.array(Cg * (1 / Cg.max()) * 255, dtype=np.uint8)
+		Cg_thin = cv2.ximgproc.thinning(img_f)
+		plt.imshow(Cg_thin, 'gray')
+		plt.show()
+		cv2.imwrite('BSDS500/Color_Gradients/Cg_{}.png'.format(index), Cg)
 
-	"""
-	Combine responses to get pb-lite output
-	Display PbLite and save image as PbLite_ImageName.png
-	use command "cv2.imwrite(...)"
-	"""
-	w1 = 0.5
-	Pb_canny = cv2.cvtColor(img_list_canny[index],cv2.COLOR_BGR2GRAY)
-	Pb_sobel = cv2.cvtColor(img_list_sobel[index], cv2.COLOR_BGR2GRAY)
-	Pb_edges = (1/3)*(Tg+Bg+Cg)*(w1*Pb_canny+(1-w1)*Pb_sobel)
-	plt.imshow(Pb_edges, 'gray')
-	plt.show()
+		"""
+		Read Sobel Baseline
+		use command "cv2.imread(...)"
+		"""
+		Sobel_img = cv2.imread(img_list_sobel[0])
+
+		"""
+		Read Canny Baseline
+		use command "cv2.imread(...)"
+		"""
+		Canny_img = cv2.imread(img_list_canny[0])
+
+		"""
+		Combine responses to get pb-lite output
+		Display PbLite and save image as PbLite_ImageName.png
+		use command "cv2.imwrite(...)"
+		"""
+		w1 = 0.5
+		Pb_canny = cv2.cvtColor(Canny_img,cv2.COLOR_BGR2GRAY)
+		Pb_sobel = cv2.cvtColor(Sobel_img, cv2.COLOR_BGR2GRAY)
+		Pb_edges = 0.2*(Tg_thin+Bg_thin+Cg_thin+Pb_canny+Pb_sobel)
+		print(Pb_edges.max)
+		plt.imshow(Pb_edges, 'gray')
+		plt.show()
+		cv2.imwrite('BSDS500/Pb_edges/PbLite_{}.png'.format(index), Pb_edges)
 
 if __name__ == '__main__':
     main()
