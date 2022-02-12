@@ -15,7 +15,7 @@ Chahat Deep Singh (chahat@terpmail.umd.edu)
 PhD Student in Computer Science,
 University of Maryland, College Park
 
-Vishaal Kanna Sivakumar (akathpal@terpmail.umd.edu)
+Vishaal Kanna Sivakumar (vishaal@terpmail.umd.edu)
 M.Eng. Student, Robotics
 University of Maryland, College Park
 
